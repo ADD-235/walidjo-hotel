@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walidjo Hôtel — Tableau de bord</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Karla:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #FBF7F0; --panel: #FFFFFF; --ink: #2B1B12; --ink-soft: #6B5548;
+    --gold: #B8863B; --gold-dark: #96692A; --line: #E6DCC9;
+    --pending: #C9971F; --confirmed: #4B7A5B; --cancelled: #B5473A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Karla', sans-serif; }
+  h1 { font-family: 'Fraunces', serif; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  h1 { font-size: 26px; }
+  .sub { color: var(--ink-soft); font-size: 14px; margin-top: 4px; }
+
+  #loginBox {
+    max-width: 360px; margin: 80px auto; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; padding: 32px; text-align: center;
+  }
+  #loginBox input {
+    width: 100%; padding: 12px 14px; margin: 16px 0; border-radius: 4px;
+    border: 1px solid var(--line); font-size: 14px;
+  }
+  #loginBox button {
+    width: 100%; padding: 12px; background: var(--ink); color: var(--bg);
+    border: none; border-radius: 4px; font-weight: 700; cursor: pointer;
+  }
+  #loginError { color: var(--cancelled); font-size: 13px; min-height: 18px; }
+
+  #dashboard { display: none; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .stat .n { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; }
+  .stat .l { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn {
+    background: var(--panel); border: 1px solid var(--line); padding: 7px 14px;
+    border-radius: 20px; font-size: 12.5px; cursor: pointer; font-weight: 600; color: var(--ink-soft);
+  }
+  .filter-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .booking-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px; margin-bottom: 12px; display: flex; justify-content: space-between;
+    align-items: flex-start; flex-wrap: wrap; gap: 14px;
+  }
+  .booking-info .name { font-weight: 700; font-size: 15.5px; margin-bottom: 4px; }
+  .booking-info .meta { font-size: 13px; color: var(--ink-soft); line-height: 1.7; }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px;
+    text-transform: uppercase; letter-spacing: .03em; color: #fff; height: fit-content;
+  }
+  .badge.pending { background: var(--pending); }
+  .badge.confirmed { background: var(--confirmed); }
+  .badge.cancelled { background: var(--cancelled); }
+
+  .actions { display: flex; gap: 8px; }
+  .actions button {
+    font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 4px;
+    border: 1px solid var(--line); background: transparent; cursor: pointer;
+  }
+  .actions button.confirm:hover { background: var(--confirmed); color: #fff; border-color: var(--confirmed); }
+  .actions button.cancel:hover { background: var(--cancelled); color: #fff; border-color: var(--cancelled); }
+
+  #emptyMsg { text-align: center; color: var(--ink-soft); padding: 40px 0; font-size: 14px; }
+  #loading { text-align: center; padding: 40px 0; color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>Walidjo Hôtel</h1>
+  <p class="sub">Espace gérant — accès protégé</p>
+  <input type="password" id="pwInput" placeholder="Mot de passe">
+  <button id="loginBtn">Se connecter</button>
+  <p id="loginError"></p>
+</div>
+
+<div class="wrap" id="dashboard">
+  <header>
+    <div>
+      <h1>Réservations</h1>
+      <p class="sub">Walidjo Hôtel — Maroua</p>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Total</div></div>
+    <div class="stat"><div class="n" id="statPending">0</div><div class="l">En attente</div></div>
+    <div class="stat"><div class="n" id="statConfirmed">0</div><div class="l">Confirmées</div></div>
+    <div class="stat"><div class="n" id="statCancelled">0</div><div class="l">Annulées</div></div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">Toutes</button>
+    <button class="filter-btn" data-filter="en attente">En attente</button>
+    <button class="filter-btn" data-filter="confirmée">Confirmées</button>
+    <button class="filter-btn" data-filter="annulée">Annulées</button>
+  </div>
+
+  <div id="loading">Chargement des réservations...</div>
+  <div id="bookingsList"></div>
+  <div id="emptyMsg" style="display:none;">Aucune réservation à afficher.</div>
+</div>
+
+<!-- ================== FIREBASE ================== -->
+<!-- Utilise EXACTEMENT la même config que dans index.html -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3L5bIZMHwwN6htZqImsi_fJuY-kd_9Is",
+    authDomain: "walidjo-hotel.firebaseapp.com",
+    projectId: "walidjo-hotel",
+    storageBucket: "walidjo-hotel.firebasestorage.app",
+    messagingSenderId: "156516143598",
+    appId: "1:156516143598:web:c4776e65b065148585beff"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // ⚠️ Mot de passe simple côté client — suffisant pour une démo,
+  // à remplacer par une vraie authentification avant un usage réel.
+  const ADMIN_PASSWORD = "walidjo2026";
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const val = document.getElementById('pwInput').value;
+    if (val === ADMIN_PASSWORD) {
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadBookings();
+    } else {
+      document.getElementById('loginError').textContent = "Mot de passe incorrect.";
+    }
+  });
+  document.getElementById('pwInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginBtn').click();
+  });
+
+  let allBookings = [];
+  let currentFilter = 'all';
+
+  async function loadBookings() {
+    document.getElementById('loading').style.display = 'block';
+    try {
+      const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      allBookings = [];
+      snap.forEach(d => allBookings.push({ id: d.id, ...d.data() }));
+      render();
+    } catch (err) {
+      console.error(err);
+      document.getElementById('loading').textContent = "Erreur de chargement. Vérifiez la configuration Firebase.";
+    }
+  }
+
+  function statusToClass(s) {
+    if (s === "confirmée") return "confirmed";
+    if (s === "annulée") return "cancelled";
+    return "pending";
+  }
+
+  function render() {
+    document.getElementById('loading').style.display = 'none';
+    const list = document.getElementById('bookingsList');
+    const empty = document.getElementById('emptyMsg');
+    list.innerHTML = '';
+
+    const filtered = currentFilter === 'all'
+      ? allBookings
+      : allBookings.filter(b => b.status === currentFilter);
+
+    document.getElementById('statTotal').textContent = allBookings.length;
+    document.getElementById('statPending').textContent = allBookings.filter(b => b.status === 'en attente').length;
+    document.getElementById('statConfirmed').textContent = allBookings.filter(b => b.status === 'confirmée').length;
+    document.getElementById('statCancelled').textContent = allBookings.filter(b => b.status === 'annulée').length;
+
+    if (filtered.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    filtered.forEach(b => {
+      const card = document.createElement('div');
+      card.className = 'booking-card';
+      card.innerHTML = `
+        <div class="booking-info">
+          <div class="name"></div>
+          <div class="meta"></div>
+        </div>
+        <span class="badge ${statusToClass(b.status)}"></span>
+        <div class="actions">
+          <button class="confirm">Confirmer</button>
+          <button class="cancel">Annuler</button>
+        </div>
+      `;
+      card.querySelector('.name').textContent = b.name;
+      card.querySelector('.meta').innerHTML =
+        `${b.room} · ${b.guests} pers.<br>Du ${b.checkin} au ${b.checkout}<br>Tél : ${b.phone}` +
+        (b.note ? `<br>Note : ${b.note}` : '');
+      card.querySelector('.badge').textContent = b.status;
+
+      card.querySelector('.confirm').addEventListener('click', () => updateStatus(b.id, 'confirmée'));
+      card.querySelector('.cancel').addEventListener('click', () => updateStatus(b.id, 'annulée'));
+
+      list.appendChild(card);
+    });
+  }
+
+  async function updateStatus(id, newStatus) {
+    try {
+      await updateDoc(doc(db, "bookings", id), { status: newStatus });
+      const b = allBookings.find(x => x.id === id);
+      if (b) b.status = newStatus;
+      render();
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de la mise à jour.");
+    }
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      render();
+    });
+  });
+</script>
+
+</body>
+</html>
